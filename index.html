@@ -16,7 +16,17 @@
                 radial-gradient(circle at 1px 1px, rgba(0, 128, 0, 0.1) 1px, transparent 0),
                 radial-gradient(circle at 15px 15px, rgba(0, 128, 0, 0.1) 1px, transparent 0);
             background-size: 30px 30px;
+            -webkit-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
+        
+        input, textarea {
+            -webkit-user-select: auto;
+            -ms-user-select: auto;
+            user-select: auto;
+        }
+
         .gradient-btn {
             background-image: linear-gradient(to right, #22c55e, #16a34a);
             transition: all 0.3s ease;
@@ -37,23 +47,43 @@
         }
         .completed-overlay {
             position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            top: 0; left: 0; right: 0; bottom: 0;
             background-color: rgba(255, 255, 255, 0.8);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 1.2rem;
-            font-weight: bold;
-            color: #16a34a;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 1.2rem; font-weight: bold; color: #16a34a;
             border-radius: 0.75rem;
             backdrop-filter: blur(2px);
+        }
+
+        /* --- СУ ТАҢБАСЫ (WATERMARK) СТИЛІ --- */
+        #watermark-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none; /* Батырмаларды басуға кедергі жасамайды */
+            z-index: 9999;
+            opacity: 0.06; /* Бұлыңғырлық деңгейі */
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-around;
+            align-content: space-around;
+            overflow: hidden;
+        }
+        .watermark-text {
+            font-size: 1.5vw;
+            font-weight: bold;
+            color: #000;
+            transform: rotate(-30deg);
+            padding: 50px;
         }
     </style>
 </head>
 <body class="text-gray-800">
+
+    <!-- Су таңбасы орналасатын орын -->
+    <div id="watermark-overlay"></div>
 
     <!-- Login Screen -->
     <div id="login-container" class="min-h-screen flex items-center justify-center bg-gray-100" style="background-color: #f0fdf4;">
@@ -106,20 +136,9 @@
 
 
     <script type="module">
-        // Firebase 11.6.1 SDK
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getAuth, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-
-        // --- МАҢЫЗДЫ: FIREBASE ОРНАТУ ---
-        // 1. Firebase жобасын жасаңыз: https://console.firebase.google.com/
-        // 2. Жобаңызға веб-қолданба қосыңыз.
-        // 3. Төмендегі firebaseConfig нысанын өз конфигурацияңызбен ауыстырыңыз.
-        // 4. Firestore Database қосыңыз.
-        // 5. 'access_codes' атты коллекция жасаңыз. Әр оқушы үшін құжат жасаңыз.
-        //    - Құжаттың ID-і ретінде оқушының email-ін (кіші әріптермен) қолданыңыз.
-        //    - Құжат ішінде 'code' деген өріс жасап, оған бірегей кодты жазыңыз.
-        //    - Мысалы: құжат ID: student@example.com, өріс: { code: "MATH-STUDENT-01" }
         
         const firebaseConfig = typeof __firebase_config !== 'undefined' 
             ? JSON.parse(__firebase_config)
@@ -127,7 +146,7 @@
                 apiKey: "AIzaSyAyRg4CUZuhnuWR2AWk6FYltx-b5s2Tqeo",
                 authDomain: "durystap2025.firebaseapp.com",
                 projectId: "durystap2025",
-                storageBucket: "durystap2025.firebasestorage.app", // Corrected
+                storageBucket: "durystap2025.firebasestorage.app",
                 messagingSenderId: "758596577131",
                 appId: "1:758596577131:web:312e6fa16454bd090d4e2e",
                 measurementId: "G-FVK0TD21ZF"
@@ -152,8 +171,8 @@
         const modal = document.getElementById('modal');
         const modalMessage = document.getElementById('modal-message');
         const modalCloseBtn = document.getElementById('modal-close-btn');
+        const watermarkOverlay = document.getElementById('watermark-overlay');
 
-        // Course Data
         const lessons = [
             { id: 1, title: 'Сабақ 1', video: 'https://www.youtube.com/watch?v=L14Ef4XNUiE', homework: 'https://drive.google.com/file/d/12or8f_KloqF-ADdHHTfsHmqB0rZPjv0d/view?usp=sharing' },
             { id: 2, title: 'Сабақ 2', video: 'https://www.youtube.com/watch?v=lZ1fIuAUvoU', homework: 'https://drive.google.com/file/d/1cUd4lz3SwfnNokcOFID-gHXl1rn_iHTs/view?usp=sharing' },
@@ -176,7 +195,6 @@
         let userProgress = [];
         let unsubscribeProgress;
 
-        // Functions
         function showModal(message) {
             modalMessage.textContent = message;
             modal.classList.remove('hidden');
@@ -216,7 +234,6 @@
             const completedCount = userProgress.length;
             const totalCount = lessons.length;
             const percentage = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-            
             progressBar.style.width = `${percentage}%`;
             progressText.textContent = `${completedCount}/${totalCount} сабақ аяқталды`;
             renderLessons();
@@ -224,26 +241,20 @@
         
         function setupProgressListener(userEmail) {
             if (unsubscribeProgress) unsubscribeProgress();
-            
             const safeEmail = encodeURIComponent(userEmail);
             const progressDocRef = doc(db, `artifacts/${appId}/users/${safeEmail}/progress`, 'lessons');
-            
             unsubscribeProgress = onSnapshot(progressDocRef, (docSnap) => {
                 userProgress = docSnap.exists() ? docSnap.data().completed || [] : [];
                 updateProgress();
-            }, (error) => {
-                console.error("Error listening to progress:", error);
-            });
+            }, (error) => console.error("Error listening to progress:", error));
         }
 
         async function toggleComplete(lessonId) {
             const userEmail = sessionStorage.getItem('mathUserEmail');
             if (!userEmail) return;
-
             const updatedProgress = userProgress.includes(lessonId)
                 ? userProgress.filter(id => id !== lessonId)
                 : [...userProgress, lessonId];
-            
             try {
                  const safeEmail = encodeURIComponent(userEmail);
                  const progressDocRef = doc(db, `artifacts/${appId}/users/${safeEmail}/progress`, 'lessons');
@@ -258,16 +269,10 @@
             event.preventDefault();
             const email = emailInput.value.trim().toLowerCase();
             const code = codeInput.value.trim();
-
-            if (!email || !code) {
-                showModal('Email мен кодты толық енгізіңіз.');
-                return;
-            }
-
+            if (!email || !code) return showModal('Email мен кодты толық енгізіңіз.');
             try {
                 const docRef = doc(db, "access_codes", email);
                 const docSnap = await getDoc(docRef);
-
                 if (docSnap.exists() && docSnap.data().code === code) {
                     sessionStorage.setItem('mathUserEmail', email);
                     initializeAppView(email);
@@ -280,14 +285,26 @@
             }
         }
 
+        // --- ЖАҢАРТЫЛДЫ: Су таңбасын қосатын функция ---
+        function setWatermark(text) {
+            watermarkOverlay.innerHTML = ''; // Тазалау
+            // Бетті толтыру үшін бірнеше рет қайталаймыз
+            for(let i=0; i < 50; i++) {
+                const span = document.createElement('span');
+                span.className = 'watermark-text';
+                span.textContent = text;
+                watermarkOverlay.appendChild(span);
+            }
+        }
+
         function initializeAppView(email) {
             userEmailEl.textContent = email;
             loginContainer.classList.add('hidden');
             appContainer.classList.remove('hidden');
+            setWatermark(email); // Оқушы кіргенде су таңбасын қосу
             setupProgressListener(email);
         }
 
-        // --- Event Listeners and App Initialization ---
         loginForm.addEventListener('submit', handleLogin);
         
         logoutBtn.addEventListener('click', () => {
@@ -298,33 +315,26 @@
         lessonsGrid.addEventListener('click', (e) => {
             if (e.target && e.target.classList.contains('complete-btn')) {
                 const lessonId = parseInt(e.target.dataset.id);
-                if (!userProgress.includes(lessonId)) {
-                    toggleComplete(lessonId);
-                }
+                if (!userProgress.includes(lessonId)) toggleComplete(lessonId);
             }
         });
 
-        // Main function to start the app
         async function main() {
             try {
-                // Sign in anonymously to get permissions for Firestore
                 await signInAnonymously(auth);
-                console.log("Authenticated anonymously.");
-
-                // Check for a logged-in user on page load
                 const storedEmail = sessionStorage.getItem('mathUserEmail');
-                if (storedEmail) {
-                    initializeAppView(storedEmail);
-                }
+                if (storedEmail) initializeAppView(storedEmail);
             } catch(error) {
                 console.error("Authentication or initialization failed:", error);
                 showModal("Қолданбаны іске қосу мүмкін болмады. Бетті қайта жүктеп көріңіз.");
             }
         }
 
-        // Run the main function when the page is loaded
         document.addEventListener('DOMContentLoaded', main);
-
+    </script>
+    
+    <script>
+        document.addEventListener('contextmenu', event => event.preventDefault());
     </script>
 
 </body>
